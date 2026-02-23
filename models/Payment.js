@@ -35,4 +35,4 @@ const paymentSchema = new mongoose.Schema({
     timestamps: true,
 });
 
-module.exports = mongoose.model('Bragpost_payment', paymentSchema);
+module.exports = mongoose.models.Bragpost_payment || mongoose.model('Bragpost_payment', paymentSchema);

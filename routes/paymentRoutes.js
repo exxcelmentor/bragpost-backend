@@ -6,13 +6,17 @@ const User = require('../models/User');
 
 // Create Payment Intent
 router.post('/create-intent', async (req, res) => {
+    console.log('[DEBUG] create-intent request started', req.body);
     try {
         const { auth0Id, planName } = req.body;
         if (!auth0Id || !planName) {
+            console.log('[DEBUG] Missing required fields');
             return res.status(400).json({ error: 'auth0Id and planName are required' });
         }
 
+        console.log(`[DEBUG] Calling stripeService.createPaymentIntent for ${auth0Id}`);
         const result = await stripeService.createPaymentIntent(auth0Id, planName);
+        console.log('[DEBUG] Stripe intent created successfully');
 
         // Create a pending payment record
         const plans = {
@@ -20,6 +24,7 @@ router.post('/create-intent', async (req, res) => {
             'bragpost_pro': { amount: 2000, replies: 500 }
         };
 
+        console.log('[DEBUG] Creating Payment record in MongoDB...');
         await Payment.create({
             userId: auth0Id,
             stripePaymentIntentId: result.paymentIntentId,
@@ -28,10 +33,11 @@ router.post('/create-intent', async (req, res) => {
             planName: planName,
             status: 'pending'
         });
+        console.log('[DEBUG] Payment record created');
 
         res.json(result);
     } catch (error) {
-        console.error('Create intent error:', error);
+        console.error('[ERROR] Create intent error:', error);
         res.status(500).json({ error: error.message });
     }
 });

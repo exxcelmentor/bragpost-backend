@@ -14,17 +14,20 @@ async function createPaymentIntent(auth0Id, planName) {
     const plan = plans[planName];
     if (!plan) throw new Error('Invalid plan selection');
 
+    console.log(`[STRIPE] Plan: ${planName}, Amount: ${plan.amount}`);
+
+    console.log(`[STRIPE] Looking for user ${auth0Id} in DB`);
     let user = await User.findOne({ auth0Id });
 
     if (!user) {
-        // If user doesn't exist in our backend DB yet, we should probably handle that.
-        // However, the frontend should ideally ensure the user exists before payment.
-        throw new Error('User not found');
+        console.log(`[STRIPE] User ${auth0Id} not found in database`);
+        throw new Error('User profile not found in database. Please ensure you are logged in correctly.');
     }
 
     // Create or retrieve Stripe customer
     let customerId = user.stripeCustomerId;
     if (!customerId) {
+        console.log(`[STRIPE] Creating new Stripe customer for ${user.email}`);
         const customer = await stripe.customers.create({
             email: user.email,
             metadata: { auth0Id }

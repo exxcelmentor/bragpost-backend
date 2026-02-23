@@ -31,6 +31,14 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/payment', paymentRoutes);
 
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Bragpost',
+        version: '1.0.0',
+        status: 'running'
+    });
+});
+
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });

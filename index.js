@@ -10,11 +10,46 @@ const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(morgan('dev'));
-app.use(cors());
+app.use(cors({
+    origin: '*', // Allow all origins for the API
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
-// Webhook route needs raw body, so we define it before express.json()
-// But we actually handle the raw body inside the route using express.raw() in routes/paymentRoutes.js
-// However, a cleaner way is to use express.json() for everything except webhooks.
+// Database Connection with explicit options
+let isConnected = false;
+const connectDB = async () => {
+    if (isConnected) return;
+    try {
+        // Ensure we are connecting to the 'bragpost' database specifically
+        const uri = process.env.MONGODB_URI.includes('?')
+            ? process.env.MONGODB_URI.replace('?', 'bragpost?')
+            : process.env.MONGODB_URI.includes('.net/')
+                ? process.env.MONGODB_URI.replace('.net/', '.net/bragpost')
+                : `${process.env.MONGODB_URI}/bragpost`;
+
+        await mongoose.connect(uri, {
+            serverSelectionTimeoutMS: 5000,
+            bufferCommands: false, // Disable buffering so we fail fast instead of hanging
+        });
+        isConnected = true;
+        console.log('Connected to MongoDB database: bragpost');
+    } catch (err) {
+        console.error('MongoDB connection error:', err);
+        throw err; // Stop execution if DB is missing
+    }
+};
+
+// Connect immediately
+connectDB();
+
+// Middleware to ensure DB connection for every request
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
+
+// Body parsing logic
 app.use((req, res, next) => {
     if (req.originalUrl === '/api/payment/webhook') {
         next();
@@ -22,11 +57,6 @@ app.use((req, res, next) => {
         express.json()(req, res, next);
     }
 });
-
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/payment', paymentRoutes);
